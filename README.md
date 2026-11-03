@@ -24,6 +24,45 @@
 
 **全量训练只验证了短音频单步计算**，没有在 V100 上验证持续收敛、长片段或完整全量 checkpoint 的保存恢复。公开版的路径与预算辅助工具本次通过 CPU/模拟训练回归，没有为发布重新启动 GPU 训练。
 
+## GPU 兼容范围
+
+**V100 已实测适配；其他老卡尚未逐卡验证。本项目不承诺所有不支持原生 BF16 的显卡都能运行。**
+
+代码会在 CUDA 设备不支持原生 BF16 时选择 FP16，并对部分模块保留 FP32；支持原生 BF16 的设备继续使用 BF16 分支。这只处理精度选择和已发现的稳定性问题，不会自动补齐驱动、框架、算子或显存方面的限制。
+
+| 显卡 / 架构 | 当前验证状态 |
+| --- | --- |
+| V100 / Volta（`sm_70`） | 原部署已验证 LoRA 更新、checkpoint 保存/恢复和受预算约束的试训；全量 SFT 仅验证短音频 Adafactor 单步计算。 |
+| T4 等 Turing（`sm_75`） | 未做硬件实测；满足软件、算子及显存条件时可尝试 FP16 路径 |
+| P100 / P40 等 Pascal（`sm_60` / `sm_61`） | 未做硬件实测；需要验证算子、FP16 性能与数值稳定性 |
+| Maxwell（`sm_5x`） | 未做硬件实测，不提供兼容保证 |
+| K80 等 Kepler（`sm_37`）及更老架构 | 不在本项目当前 PyTorch 2.9.1+cu126 环境的支持范围内 |
+
+即使 PyTorch 构建包含目标架构，也不代表 Breeze 的全部依赖和流程都已通过验证。使用前仍需确认：
+
+1. **依赖支持**：PyTorch、CUDA 运行库、驱动及相关算子都支持该 GPU。当前验证环境为 `torch==2.9.1+cu126`；不要把任意最新版依赖当作等价替换。NVIDIA 列出的 Maxwell / Pascal / Volta 工具链支持止于 CUDA 12.x，Kepler 止于更早版本。
+2. **容量足够**：FP32 模块和运行缓存仍会占显存。V100 原部署的推理常驻约 11 GiB，仅为该配置的参考；6GB、8GB 显卡不能直接照搬这个常驻配置。
+3. **逐流程验证**：先检查有限值和短音频推理，再测试 LoRA 梯度、保存恢复及实际显存。推理成功不等于 LoRA 或全量训练也能成功；全量训练的显存需求和稳定性需单独验证。
+
+可查看本机安装的构建，而不是只看显卡是否支持 BF16：
+
+```python
+import torch
+
+print("PyTorch:", torch.__version__)
+print("CUDA runtime:", torch.version.cuda)
+print("CUDA available:", torch.cuda.is_available())
+print("Compiled architectures:", torch.cuda.get_arch_list())
+if torch.cuda.is_available():
+    print("GPU:", torch.cuda.get_device_name(0))
+    print("Compute capability:", torch.cuda.get_device_capability(0))
+    print("Native BF16:", torch.cuda.is_bf16_supported(including_emulation=False))
+```
+
+`nvidia-smi` 显示的 CUDA 版本是驱动支持的最高版本，不等于 PyTorch 实际使用的 CUDA 运行库；后者看 `torch.version.cuda`。较新 GPU 也要确认所装构建覆盖其架构，不能仅凭存在 BF16 分支就认为全部兼容。
+
+参考：[NVIDIA GPU 架构表](https://developer.nvidia.com/cuda/gpus)、[旧 GPU 架构表](https://developer.nvidia.com/cuda/gpus/legacy)、[CUDA / 驱动 / 架构兼容矩阵](https://docs.nvidia.com/datacenter/tesla/drivers/cuda-toolkit-driver-and-architecture-matrix.html)、[PyTorch 2.9.1 发布兼容说明](https://github.com/pytorch/pytorch/blob/v2.9.1/RELEASE.md)。
+
 ## 安装并复用官方底模
 
 ```bash
