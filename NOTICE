@@ -1,0 +1,24 @@
+Instavar Breeze TTS 2 fine-tuning
+Copyright 2026 Instavar
+
+This product includes software developed by RESONIA, INC., doing business as
+BreezeBlue, from the Breeze TTS 2 PyTorch inference repository:
+https://github.com/breezeblue-ai/breeze-tts
+
+Instavar added independent training, checkpoint lifecycle, evaluation, and
+documentation code. Modified upstream files carry a prominent modification
+notice or are identified by the repository history.
+
+This is an independent community project. Instavar is not affiliated with or
+endorsed by BreezeBlue or RESONIA, INC.
+
+V100 adaptation distributed by danielsunrise
+Community baseline: 7d87c54fbf346cfe31d9786aad5a2918e08f1c7d
+https://github.com/instavar/breeze-tts2-finetuning
+
+Additional modifications: V100 FP16 synthesis with FP32 text encoding and
+adapters; non-reentrant LoRA gradient checkpointing; GradScaler save/resume;
+progress reporting; portable GPT-SoVITS list conversion and bounded trials.
+Modified source files are marked at their headers. Original community notices,
+licenses, provenance documents, and README.community.md are retained.
+No private datasets, transcripts, model weights, adapters or logs are included.
